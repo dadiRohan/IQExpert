@@ -1,0 +1,117 @@
+/*LOCALHOST Store Procedure*/
+
+
+
+(1) FOR Select All Data:
+DELIMITER //
+CREATE PROCEDURE GetAllProducts()
+   BEGIN
+   select * FROM `tbl_bidding`;
+   END //
+ DELIMITER ;
+
+(2)
+CALL GetAllProducts()
+
+
+(3) For bid Winner Group:
+DELIMITER //
+CREATE PROCEDURE GetAll()
+   BEGIN
+   (select IF((SELECT sum(`bid_amt`) FROM `tbl_bidding` WHERE `bid_type` = 'L') > (SELECT sum(`bid_amt`) FROM `tbl_bidding` WHERE `bid_type` = 'H'),1,0));
+   END //
+ DELIMITER ;
+
+(4)
+CALL GetAll()
+
+
+(5) For bid Winner Group if procedure already exist:
+DROP PROCEDURE IF EXISTS GetAll;
+
+DELIMITER //
+CREATE PROCEDURE GetAll()
+   BEGIN
+   (select IF((SELECT sum(`bid_amt`) FROM `tbl_bidding` WHERE `bid_type` = 'L') > (SELECT sum(`bid_amt`) FROM `tbl_bidding` WHERE `bid_type` = 'H'),True,False));
+   END  //
+ DELIMITER ;   
+
+
+(6) Final Procedure:
+
+create PROCEDURE BidMgmt( param_slot_number VARCHAR(100))
+
+BEGIN
+
+DECLARE Chk INT ;
+
+DECLARE Extracting_Profit bigint ;
+
+DECLARE totalBid bigint ;
+
+
+set Chk = (select IF((SELECT sum(`amount`) FROM `tbl_bid_transaction` WHERE `bid` = 'low' AND slot_number = param_slot_number) > (SELECT sum(`amount`) FROM `tbl_bid_transaction` WHERE `bid` = 'High' AND slot_number = param_slot_number ),0,1));
+                        
+IF Chk=1 Then 
+                              
+set Extracting_Profit = (SELECT sum(`amount`)*.50 FROM `tbl_bid_transaction` WHERE `bid` = 'low' AND slot_number = param_slot_number ); # Low is looser
+
+#Distributing Profit
+
+set totalBid = (SELECT sum(`amount`) FROM `tbl_bid_transaction` WHERE `bid` = 'High' AND slot_number = param_slot_number);
+UPDATE `tbl_bid_transaction`
+SET bid_pro_loss = Extracting_Profit * (amount/totalBid)
+where
+`bid` = 'High' AND slot_number = param_slot_number;
+
+#Distributing Loss
+
+UPDATE `tbl_bid_transaction`
+SET bid_pro_loss = -1 * amount*.60
+where
+`bid` = 'Low' AND slot_number = param_slot_number;
+
+ELSE 
+
+
+
+
+
+set Extracting_Profit = (SELECT sum(`amount`)*.50 FROM `tbl_bid_transaction` WHERE `bid` = 'High' AND slot_number = param_slot_number); #High is looser
+
+#Distributing Profit
+
+set totalBid = (SELECT sum(`amount`) FROM `tbl_bid_transaction` WHERE `bid` = 'low'AND slot_number = param_slot_number);
+UPDATE `tbl_bid_transaction`
+SET bid_pro_loss = Extracting_Profit * (amount/totalBid)
+where
+`bid` = 'low'AND slot_number = param_slot_number;
+
+#Distributing Loss
+
+UPDATE `tbl_bid_transaction`
+SET bid_pro_loss = -1 * amount*.60
+where
+`bid` = 'High'AND slot_number = param_slot_number;
+
+END IF;
+                                                      
+END
+
+(7) CALL Final Procedure:
+CALL BidMgmt('A')
+
+
+(8) For Curr Play Result 
+
+CREATE PROCEDURE currPlayResult( param_slot_number VARCHAR(255), param_Slot_Id VARCHAR(255))
+
+BEGIN 	
+
+SELECT slot_number, slot_id, u_id, amount, bid_pro_loss, created_at FROM `tbl_bid_transaction` WHERE slot_number = param_slot_number AND slot_id = param_Slot_Id;
+
+END
+
+(9) CALL Curr Play Result
+
+CALL currPlayResult('1','A')

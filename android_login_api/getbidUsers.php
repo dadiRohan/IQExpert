@@ -1,0 +1,28 @@
+<?php
+ini_set('display_errors','on');
+
+require_once 'include/DB_Functions.php';
+$db = new DB_Functions();
+
+if(isset($_REQUEST['SlotNumber'])){
+
+	$SlotNumber = $_REQUEST['SlotNumber'];
+
+
+	if($countSlotusers = $db->countbidUsers($SlotNumber)){
+
+		// echo 'GET ALL';
+		$response['error'] = FALSE;
+		$response['bid']['countUser'] = $countSlotusers;
+
+		echo json_encode($response);
+	}else{
+
+		// echo 'Didn`t get All';
+		$response["error"] = TRUE;
+	    $response["error_msg"] = "User`s not available!";
+	    echo json_encode($response);	
+	}
+}
+
+?>
