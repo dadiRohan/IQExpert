@@ -1,0 +1,98 @@
+SELECT 
+	Q.name,
+	Q.u_id,
+	Q.HighValue,
+	Q.LowValue,
+	Q.TotalValue
+FROM 
+(
+SELECT 
+    ur.name,
+ 	bt1.u_id,
+ 	bt1.HighValue,
+ 	bt2.LowValue,
+    sum(bt1.HighValue + bt2.LowValue) As 'TotalValue'
+FROM 	
+	(
+		(
+		SELECT 
+			bt.u_id,
+			SUM(bt.amount) As 'HighValue'    
+		FROM
+		tbl_bid_transaction as bt
+		WHERE	
+			bt.bid='High'
+		GROUP BY
+            BT.u_id
+		) AS bt1		
+		INNER JOIN 
+		(
+		SELECT 
+			bt.u_id,
+			SUM(bt.amount) As 'LowValue'    
+		FROM
+		tbl_bid_transaction AS bt
+		WHERE	
+			bt.bid='Low'
+		GROUP BY
+            BT.u_id
+		) AS bt2
+		ON
+		bt1.u_id=bt2.u_id
+        INNER JOIN
+        (
+         SELECT name,unique_id FROM users  
+        ) AS ur
+        ON
+        bt1.u_id = ur.unique_id
+	)
+
+    GROUP BY 
+   	bt1.u_id,
+    bt1.HighValue,
+    bt2.LowValue,
+    ur.unique_id
+UNION
+	SELECT 
+	ur.name,
+	bt.u_id, 
+	SUM(0) As 'HighValue', 
+	SUM(bt.amount) As 'LowValue',
+	sum(0 + bt.amount) As 'TotalValue'
+	FROM tbl_bid_transaction AS bt 
+	    INNER JOIN
+        (
+         SELECT name,unique_id FROM users  
+        ) AS ur
+        ON
+        bt.u_id = ur.unique_id 
+	WHERE 
+	(bt.bid='Low' AND bt.amount IS NOT NULL)	
+	GROUP BY 
+	ur.name,
+	BT.u_id
+UNION
+	SELECT 
+	ur.name,
+	bt.u_id, 
+	SUM(bt.amount) As 'HighValue', 
+	SUM(0) As 'LowValue',
+	sum(bt.amount + 0) As 'TotalValue'
+	FROM tbl_bid_transaction AS bt 
+	    INNER JOIN
+        (
+         SELECT name,unique_id FROM users  
+        ) AS ur
+        ON
+        bt.u_id = ur.unique_id 
+	WHERE 
+	(bt.bid='High' AND bt.amount IS NOT NULL)
+	
+	GROUP BY 
+	ur.name,
+	BT.u_id
+) As Q
+WHERE Q.name LIKE 'a%'
+GROUP BY 
+	Q.name,
+	Q.u_id
